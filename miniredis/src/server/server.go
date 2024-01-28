@@ -1,7 +1,48 @@
 package server
 
-import "fmt"
+import (
+	"fmt"
+	"miniredis/src/common"
+	"net"
+)
 
-func PrintHello() {
-	fmt.Println("Hello, Modules! This is mypackage speaking!")
+type server struct {
+	listener net.Listener
+}
+
+func StartServer() {
+	ln, err := net.Listen("tcp", ":6379")
+
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	for {
+
+		con, err := ln.Accept()
+
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+
+		go handleConnection(con)
+	}
+}
+
+func handleConnection(con net.Conn) {
+	defer con.Close()
+
+	buffer := make([]byte, 1024)
+
+	_, err := con.Read(buffer)
+
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	common.NewParser()
+
 }

@@ -6,6 +6,6 @@ import (
 )
 
 func main() {
-	server.PrintHello()
+	server.StartServer()
 	fmt.Println("Hello, Modules!")
 }
