@@ -38,11 +38,25 @@ func (p *Parser) Parse(buffer []byte) {
 
 	switch identifier {
 	case '+':
+	case '-':
+		parseSimpleError(buffer[1:])
 	case '$':
 		parseBulkString(buffer[1:])
 	default:
 	}
 
+}
+
+func parseSimpleError(buffer []byte) (SimpleError, error) {
+
+	cursor := Cursor{
+		buffer: buffer,
+		Index:  0,
+	}
+
+	valueBuffer := cursor.nextLine()
+
+	return SimpleError{Value: string(valueBuffer)}, nil
 }
 
 func parseBulkString(buffer []byte) (BulkString, error) {
