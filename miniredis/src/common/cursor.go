@@ -28,7 +28,7 @@ func (c *Cursor) nextLine() []byte {
 	for c.hasNext() {
 		index, char := c.Current()
 
-		if char == '\r' {
+		if char == '\r' && c.buffer[index+1] == '\n' {
 			c.Next()
 			c.Next()
 			return c.buffer[start:index]
