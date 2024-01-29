@@ -11,7 +11,7 @@ type server struct {
 }
 
 func StartServer() {
-	ln, err := net.Listen("tcp", ":6379")
+	ln, err := net.Listen("tcp", ":6380")
 
 	if err != nil {
 		fmt.Println(err)
@@ -43,6 +43,7 @@ func handleConnection(con net.Conn) {
 		return
 	}
 
-	common.NewParser()
+	parser := common.NewParser()
 
+	parser.Parse(buffer)
 }

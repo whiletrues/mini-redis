@@ -4,30 +4,56 @@ import (
 	"errors"
 )
 
-type Value interface{}
+type RedisType interface {
+	GetValue() interface{}
+}
 
 type SimpleString struct {
 	Value string
+}
+
+func (s SimpleString) GetValue() interface{} {
+	return s.Value
 }
 
 type BulkString struct {
 	Value string
 }
 
+func (b BulkString) GetValue() interface{} {
+	return b.Value
+}
+
 type ArrayString struct {
-	Value []Value
+	Value []string
+}
+
+func (a ArrayString) GetValue() interface{} {
+	return a.Value
 }
 
 type SimpleError struct {
 	Value string
 }
 
+func (s SimpleError) GetValue() interface{} {
+	return s.Value
+}
+
 type Integer struct {
 	Value int
 }
 
+func (i Integer) GetValue() interface{} {
+	return i.Value
+}
+
 type Boolean struct {
 	Value bool
+}
+
+func (b Boolean) GetValue() interface{} {
+	return b.Value
 }
 
 type Parser struct{}
@@ -36,18 +62,21 @@ func NewParser() *Parser {
 	return &Parser{}
 }
 
-func (p *Parser) Parse(buffer []byte) {
+func (p *Parser) Parse(buffer []byte) (RedisType, error) {
 
 	identifier := buffer[0]
 
 	switch identifier {
 	case '+':
-		parseSimpleString(buffer[1:])
+		return parseSimpleString(buffer[1:])
 	case '-':
-		parseSimpleError(buffer[1:])
+		return parseSimpleError(buffer[1:])
 	case '$':
-		parseBulkString(buffer[1:])
+		return parseBulkString(buffer[1:])
+	case '*':
+		return parseArrayString(buffer[1:])
 	default:
+		return nil, errors.New("Invalid identifier")
 	}
 }
 
@@ -74,22 +103,45 @@ func parseArrayString(buffer []byte) (ArrayString, error) {
 		Index:  0,
 	}
 
-	lengthBuffer := cursor.nextLine()
+	countBuffer := cursor.nextLine()
 
-	length, err := getInt(lengthBuffer)
+	count, err := getInt(countBuffer)
 
 	if err != nil {
-		panic(err)
+		return ArrayString{}, err
 	}
-	values := make([]Value, length)
+
+	values := make([]string, count)
+
+	position := 0
 
 	for cursor.hasNext() {
 
+		lengthBuffer := cursor.nextLine()
+
+		if lengthBuffer[0] != '$' {
+			return ArrayString{}, errors.New("Invalid length identifier")
+		}
+
+		length, err := getInt(lengthBuffer[1:])
+
+		if err != nil {
+			return ArrayString{}, err
+		}
+
 		valueBuffer := cursor.nextLine()
 
-		value := string(valueBuffer)
+		if len(valueBuffer) != length {
+			return ArrayString{}, errors.New("Invalid length")
+		}
 
-		values = append(values, value)
+		if position > len(values)-1 {
+			return ArrayString{}, errors.New("Invalid length")
+		}
+
+		values[position] = string(valueBuffer)
+
+		position++
 	}
 
 	return ArrayString{Value: values}, nil
