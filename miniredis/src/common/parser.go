@@ -14,6 +14,10 @@ type BulkString struct {
 	Value string
 }
 
+type ArrayString struct {
+	Value []Value
+}
+
 type SimpleError struct {
 	Value string
 }
@@ -38,13 +42,65 @@ func (p *Parser) Parse(buffer []byte) {
 
 	switch identifier {
 	case '+':
+		parseSimpleString(buffer[1:])
 	case '-':
 		parseSimpleError(buffer[1:])
 	case '$':
 		parseBulkString(buffer[1:])
 	default:
 	}
+}
 
+func parseSimpleString(buffer []byte) (SimpleString, error) {
+
+	cursor := Cursor{
+		buffer: buffer,
+		Index:  0,
+	}
+
+	valueBuffer := cursor.nextLine()
+
+	if len(valueBuffer) == 0 {
+		return SimpleString{}, errors.New("Invalid length 0")
+	}
+
+	return SimpleString{Value: string(valueBuffer)}, nil
+}
+
+func parseArrayString(buffer []byte) (ArrayString, error) {
+
+	cursor := Cursor{
+		buffer: buffer,
+		Index:  0,
+	}
+
+	lengthBuffer := cursor.nextLine()
+
+	length, err := getInt(lengthBuffer)
+
+	if err != nil {
+		panic(err)
+	}
+	values := make([]Value, length)
+
+	for cursor.hasNext() {
+
+		valueBuffer := cursor.nextLine()
+
+		value := string(valueBuffer)
+
+		values = append(values, value)
+	}
+
+	return ArrayString{Value: values}, nil
+}
+
+func getInt(buffer []byte) (int, error) {
+	var x int32
+	for _, c := range buffer {
+		x = x*10 + int32(c-'0')
+	}
+	return int(x), nil
 }
 
 func parseSimpleError(buffer []byte) (SimpleError, error) {
