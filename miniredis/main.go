@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"miniredis/src/common"
 	"miniredis/src/server"
 )
 
@@ -15,7 +14,7 @@ func main() {
 		fmt.Println(err)
 	}
 
-	Parser := common.NewParser()
+	// Parser := common.NewParser()
 
-	Parser.Parse([]byte("*2\r\n$5\r\nhello\r\n$5\r\nworld\r\n"))
+	// Parser.Parse([]byte("*2\r\n$5\r\nhello\r\n$5\r\nworld\r\n"))
 }

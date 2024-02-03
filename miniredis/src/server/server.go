@@ -76,41 +76,40 @@ func StartServer(ip string, port int) (err error) {
 		return fmt.Errorf("failed to start server (%v)", err)
 	}
 
-	epollDescriptor, err := syscall.EpollCreate(socket.FileDescriptor)
+	epollDescriptor, err := syscall.EpollCreate1(0)
 
 	if err != nil {
 		return fmt.Errorf("epoll creation failed (%v)", err)
 	}
 
-	var event syscall.EpollEvent
+	err = syscall.EpollCtl(epollDescriptor, syscall.EPOLL_CTL_ADD, socket.FileDescriptor, &syscall.EpollEvent{
+		Events: syscall.EPOLLIN,
+		Fd:     int32(socket.FileDescriptor),
+	})
 
-	event.Events = syscall.EPOLLIN
-	event.Fd = int32(socket.FileDescriptor)
-
-	defer syscall.Close(epollDescriptor)
-
-	if err = syscall.EpollCtl(epollDescriptor, syscall.EPOLL_CTL_ADD, socket.FileDescriptor, &event); err != nil {
-		return fmt.Errorf("epoll control failed (%v)", err)
+	if err != nil {
+		return fmt.Errorf("epoll ctl failed (%v)", err)
 	}
 
-	for {
-		var events [1]syscall.EpollEvent
+	events := make([]syscall.EpollEvent, 10)
 
-		_, err = syscall.EpollWait(epollDescriptor, events[:], -1)
+	for {
+		nevents, err := syscall.EpollWait(epollDescriptor, events, -1)
 
 		if err != nil {
 			return fmt.Errorf("epoll wait failed (%v)", err)
 		}
+		for ev := 0; ev < nevents; ev++ {
+			if int(events[ev].Fd) == int(socket.FileDescriptor) {
 
-		for _, event := range events {
-			if event.Fd == int32(socket.FileDescriptor) {
-				_, _, err := syscall.Accept(socket.FileDescriptor)
+				connectionFileDescriptor, _, err := syscall.Accept(socket.FileDescriptor)
 
 				if err != nil {
-					return fmt.Errorf("accept failed (%v)", err)
+					return fmt.Errorf("socket accept failed (%v)", err)
 				}
 
-				go handleConnection(socket)
+				println(connectionFileDescriptor)
+
 			}
 		}
 	}
