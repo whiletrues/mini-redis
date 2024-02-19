@@ -2,19 +2,50 @@ package main
 
 import (
 	"fmt"
-	"miniredis/src/server"
+	netpoller "miniredis/src/server"
+
+	"golang.org/x/sys/unix"
 )
 
 func main() {
 	fmt.Println("Hello, Modules!")
 
-	err := server.StartServer("127.0.0.1", 5093)
+	netpoller, err := netpoller.New()
 
 	if err != nil {
 		fmt.Println(err)
+		return
 	}
 
-	// Parser := common.NewParser()
+	r, w, err := socketPair()
+	
+	netpoller.Start()
+}
+func socketPair() (r, w int, err error) {
+	fd, err := unix.Socketpair(unix.AF_UNIX, unix.SOCK_STREAM, 0)
+	if err != nil {
+		return
+	}
 
-	// Parser.Parse([]byte("*2\r\n$5\r\nhello\r\n$5\r\nworld\r\n"))
+	if err = unix.SetNonblock(fd[0], true); err != nil {
+		return
+	}
+	if err = unix.SetNonblock(fd[1], true); err != nil {
+		return
+	}
+
+	buf := 4096
+	if err = unix.SetsockoptInt(fd[0], unix.SOL_SOCKET, unix.SO_SNDBUF, buf); err != nil {
+		return
+	}
+	if err = unix.SetsockoptInt(fd[1], unix.SOL_SOCKET, unix.SO_SNDBUF, buf); err != nil {
+		return
+	}
+	if err = unix.SetsockoptInt(fd[0], unix.SOL_SOCKET, unix.SO_RCVBUF, buf); err != nil {
+		return
+	}
+	if err = unix.SetsockoptInt(fd[1], unix.SOL_SOCKET, unix.SO_RCVBUF, buf); err != nil {
+		return
+	}
+	return fd[0], fd[1], nil
 }
